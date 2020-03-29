@@ -4,16 +4,13 @@ import { Line } from "react-chartjs-2"
 import { Box, Select } from "grommet"
 import useLiveData from "./useLiveData"
 
-const colors = ["#F00", "#0F0", "#00F"]
+const colors = ["#6FFFB0", "#FD6FFF", "#81FCED", "#FFCA58"]
 
 const Graph = () => {
   const liveData = useLiveData()
   const [cases, setCases] = useState({})
   const [days, setDays] = useState({})
-  const [selectedCountries, setSelectedCountries] = useState([
-    "New Zealand",
-    "Australia"
-  ])
+  const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
 
   const countries = useMemo(() => {
     return Object.keys(liveData)
@@ -73,8 +70,6 @@ const Graph = () => {
           labels: longestNumDays,
           datasets: graphData
         }}
-        // width={500}
-        // height={250}
       />
 
       {selectedCountries.map((selected, i) => {
