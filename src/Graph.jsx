@@ -7,6 +7,10 @@ import useCountryPopulation from "./useCountryPopulation"
 
 const colors = ["#6FFFB0", "#FD6FFF", "#81FCED", "#FFCA58"]
 
+const getAsPopulationPercentage = (number, population) => {
+  return (number * 100) / population
+}
+
 const Graph = () => {
   const liveData = useLiveData()
   const [cases, setCases] = useState({})
@@ -14,6 +18,9 @@ const Graph = () => {
   const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
   const [isCumulativeGraph, setIsCumulativeGraph] = useState(true)
   const [isPopulationPercentage, setPopulationPercentage] = useState(false)
+  const countryPopulation = []
+  countryPopulation[0] = useCountryPopulation(selectedCountries[0])
+  countryPopulation[1] = useCountryPopulation(selectedCountries[1])
 
   const countries = useMemo(() => {
     return Object.keys(liveData)
@@ -23,8 +30,18 @@ const Graph = () => {
     if (liveData[selectedCountries[0]]) {
       const updatedCases = {}
       const updatesDates = {}
-      selectedCountries.forEach(selectedCountry => {
-        const allCases = liveData[selectedCountry].map(o => o.confirmed)
+      selectedCountries.forEach((selectedCountry, i) => {
+        console.log("selectedCountry", selectedCountry)
+        const allCases = liveData[selectedCountry].map(o => {
+          if (isPopulationPercentage) {
+            if (!countryPopulation[i]) {
+              return 0
+            }
+            return getAsPopulationPercentage(o.confirmed, countryPopulation[i])
+          } else {
+            return o.confirmed
+          }
+        })
         const dates = liveData[selectedCountry].map(o => o.date)
         const firstConfirmed = allCases.findIndex(c => c > 0)
         updatedCases[selectedCountry] = allCases.slice(firstConfirmed)
@@ -44,7 +61,7 @@ const Graph = () => {
       setCases(updatedCases)
       setDays(updatesDates)
     }
-  }, [countries, selectedCountries, isCumulativeGraph])
+  }, [countries, selectedCountries, isCumulativeGraph, isPopulationPercentage])
 
   const graphData = useMemo(() => {
     if (Object.keys(cases).length) {
@@ -80,6 +97,7 @@ const Graph = () => {
       elevation="medium"
       round="medium"
     >
+      Cases since first infection
       <Line
         options={{
           legend: {
@@ -143,7 +161,6 @@ const Graph = () => {
             event.target.value === "population percentage"
           )
         }
-        disabled
       />
     </Box>
   )

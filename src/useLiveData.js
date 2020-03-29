@@ -3,10 +3,10 @@ import React, { useEffect, useState, useMemo } from "react"
 const useLiveData = () => {
   const [liveData, setLiveData] = useState({})
   useEffect(() => {
-    console.log("Fetch")
+    console.log("Fetching COVID19 data")
     fetch("https://pomber.github.io/covid19/timeseries.json").then(res => {
       res.json().then(data => {
-        console.log("Data received")
+        console.log("COVID19 Data received")
         setLiveData(data)
       })
     })
