@@ -3,6 +3,7 @@ import "./App.css"
 import { Line } from "react-chartjs-2"
 import { Box, Select, RadioButtonGroup } from "grommet"
 import useLiveData from "./useLiveData"
+import useCountryPopulation from "./useCountryPopulation"
 
 const colors = ["#6FFFB0", "#FD6FFF", "#81FCED", "#FFCA58"]
 
@@ -11,11 +12,8 @@ const Graph = () => {
   const [cases, setCases] = useState({})
   const [days, setDays] = useState({})
   const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
-  const [graphType, setGraphType] = useState("cumulative")
-
-  const isCumulativeGraph = useMemo(() => {
-    return graphType === "cumulative"
-  }, [graphType])
+  const [isCumulativeGraph, setIsCumulativeGraph] = useState(true)
+  const [isPopulationPercentage, setPopulationPercentage] = useState(false)
 
   const countries = useMemo(() => {
     return Object.keys(liveData)
@@ -46,7 +44,7 @@ const Graph = () => {
       setCases(updatedCases)
       setDays(updatesDates)
     }
-  }, [countries, selectedCountries, graphType])
+  }, [countries, selectedCountries, isCumulativeGraph])
 
   const graphData = useMemo(() => {
     if (Object.keys(cases).length) {
@@ -83,16 +81,35 @@ const Graph = () => {
       round="medium"
     >
       <Line
+        options={{
+          legend: {
+            labels: {
+              fontColor: "#AAA"
+            }
+          },
+          scales: {
+            yAxes: [
+              {
+                ticks: {
+                  fontColor: "#AAA"
+                }
+              }
+            ],
+            xAxes: [
+              {
+                ticks: {
+                  fontColor: "#AAA"
+                }
+              }
+            ]
+          }
+        }}
         data={{
           labels: longestNumDays,
           datasets: graphData
         }}
       />
-      <RadioButtonGroup
-        options={["daily cases", "cumulative"]}
-        value={graphType}
-        onChange={event => setGraphType(event.target.value)}
-      />
+      Countries:
       {selectedCountries.map((selected, i) => {
         return (
           <Select
@@ -107,6 +124,27 @@ const Graph = () => {
           />
         )
       })}
+      Graph Type:
+      <RadioButtonGroup
+        name={"isCumulativeGraphSelector"}
+        options={["daily cases", "cumulative"]}
+        value={isCumulativeGraph ? "cumulative" : "daily cases"}
+        onChange={event => {
+          setIsCumulativeGraph(event.target.value === "cumulative")
+        }}
+      />
+      Graph Scale:
+      <RadioButtonGroup
+        name={"isPopulationPercentageSelector"}
+        options={["raw numbers", "population percentage"]}
+        value={isPopulationPercentage ? "population percentage" : "raw numbers"}
+        onChange={event =>
+          setPopulationPercentage(
+            event.target.value === "population percentage"
+          )
+        }
+        disabled
+      />
     </Box>
   )
 }
