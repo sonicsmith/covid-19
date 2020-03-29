@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import "./App.css"
 import { Line } from "react-chartjs-2"
-import { Box, Select } from "grommet"
+import { Box, Select, RadioButtonGroup } from "grommet"
 import useLiveData from "./useLiveData"
 
 const colors = ["#6FFFB0", "#FD6FFF", "#81FCED", "#FFCA58"]
@@ -11,6 +11,11 @@ const Graph = () => {
   const [cases, setCases] = useState({})
   const [days, setDays] = useState({})
   const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
+  const [graphType, setGraphType] = useState("cumulative")
+
+  const isCumulativeGraph = useMemo(() => {
+    return graphType === "cumulative"
+  }, [graphType])
 
   const countries = useMemo(() => {
     return Object.keys(liveData)
@@ -26,18 +31,30 @@ const Graph = () => {
         const firstConfirmed = allCases.findIndex(c => c > 0)
         updatedCases[selectedCountry] = allCases.slice(firstConfirmed)
         updatesDates[selectedCountry] = dates.slice(firstConfirmed)
+        // If we want daily values
+        if (!isCumulativeGraph) {
+          const dailyValues = updatedCases[selectedCountry].map((c, i) => {
+            if (i > 1) {
+              return c - updatedCases[selectedCountry][i - 1]
+            } else {
+              return c
+            }
+          })
+          updatedCases[selectedCountry] = dailyValues
+        }
       })
       setCases(updatedCases)
       setDays(updatesDates)
     }
-  }, [countries, selectedCountries])
+  }, [countries, selectedCountries, graphType])
 
   const graphData = useMemo(() => {
     if (Object.keys(cases).length) {
       const datasets = Object.values(cases)
       return datasets.map((dataset, i) => ({
-        label: `Confirmed Cases ${Object.keys(cases)[i]}`,
+        label: `${Object.keys(cases)[i]}`,
         borderColor: colors[i],
+        pointStyle: "line",
         data: dataset
       }))
     } else {
@@ -71,7 +88,11 @@ const Graph = () => {
           datasets: graphData
         }}
       />
-
+      <RadioButtonGroup
+        options={["daily cases", "cumulative"]}
+        value={graphType}
+        onChange={event => setGraphType(event.target.value)}
+      />
       {selectedCountries.map((selected, i) => {
         return (
           <Select
