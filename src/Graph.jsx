@@ -16,6 +16,12 @@ const getAsPopulationPercentage = (number, population) => {
   return (number * 100) / population
 }
 
+const getValuesAsLog = values => {
+  return values.map(v => {
+    return Math.log(v)
+  })
+}
+
 const Graph = () => {
   const liveData = useLiveData()
   const [cases, setCases] = useState({})
@@ -23,6 +29,7 @@ const Graph = () => {
   const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
   const [isCumulativeGraph, setIsCumulativeGraph] = useState(true)
   const [isPopulationPercentage, setPopulationPercentage] = useState(false)
+  const [isLogMode, setIsLogMode] = useState(false)
   const countryPopulation = []
   countryPopulation[0] = useCountryPopulation(selectedCountries[0])
   countryPopulation[1] = useCountryPopulation(selectedCountries[1])
@@ -36,11 +43,13 @@ const Graph = () => {
       const updatedCases = {}
       const updatesDates = {}
       selectedCountries.forEach((selectedCountry, i) => {
-        console.log("selectedCountry", selectedCountry)
         const allCases = liveData[selectedCountry].map(o => {
           const activeCases = Math.max(o.confirmed - o.recovered, 0)
           if (isPopulationPercentage) {
             if (!countryPopulation[i]) {
+              alert(
+                `Couldn't get population for ${selectedCountry}. Please select raw numbers`
+              )
               return 0
             }
             return getAsPopulationPercentage(activeCases, countryPopulation[i])
@@ -50,7 +59,9 @@ const Graph = () => {
         })
         const dates = liveData[selectedCountry].map(o => o.date)
         const firstConfirmed = allCases.findIndex(c => c > 0)
-        updatedCases[selectedCountry] = allCases.slice(firstConfirmed)
+        const casesSinceFirst = allCases.slice(firstConfirmed)
+        const logCases = getValuesAsLog(casesSinceFirst)
+        updatedCases[selectedCountry] = isLogMode ? logCases : casesSinceFirst
         updatesDates[selectedCountry] = dates
           .slice(firstConfirmed)
           .map((d, i) => i)
@@ -69,7 +80,13 @@ const Graph = () => {
       setCases(updatedCases)
       setDays(updatesDates)
     }
-  }, [countries, selectedCountries, isCumulativeGraph, isPopulationPercentage])
+  }, [
+    countries,
+    selectedCountries,
+    isCumulativeGraph,
+    isPopulationPercentage,
+    isLogMode
+  ])
 
   const graphData = useMemo(() => {
     if (Object.keys(cases).length) {
@@ -122,9 +139,10 @@ const Graph = () => {
                 scaleLabel: {
                   display: true,
                   fontColor: "#AAA",
-                  labelString: isPopulationPercentage
-                    ? "Percentage infected"
-                    : "Number infected"
+                  labelString:
+                    (isPopulationPercentage
+                      ? "Percentage infected"
+                      : "Number infected") + (isLogMode ? " (ln)" : "")
                 }
               }
             ],
@@ -181,6 +199,13 @@ const Graph = () => {
             event.target.value === "population percentage"
           )
         }
+      />
+      Graph Mode:
+      <RadioButtonGroup
+        name={"isLogModeSelector"}
+        options={["normal", "log"]}
+        value={isLogMode ? "log" : "normal"}
+        onChange={event => setIsLogMode(event.target.value === "log")}
       />
     </Box>
   )

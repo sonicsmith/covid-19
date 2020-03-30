@@ -20,11 +20,6 @@ const useCountryPopulation = country => {
           country,
           correctData && correctData.population
         )
-        if (!(correctData && correctData.population)) {
-          alert(
-            `Couldn't get population for ${convertedName}. Please select raw numbers`
-          )
-        }
         setPopulation(correctData && correctData.population)
       })
     })
