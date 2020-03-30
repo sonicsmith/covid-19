@@ -5,7 +5,12 @@ import { Box, Select, RadioButtonGroup } from "grommet"
 import useLiveData from "./useLiveData"
 import useCountryPopulation from "./useCountryPopulation"
 
-const colors = ["#6FFFB0", "#FD6FFF", "#81FCED", "#FFCA58"]
+const colors = [
+  "rgba(111, 255, 176, 0.7)",
+  "rgba(253, 111, 255, 0.7)",
+  "rgba(129, 252, 237, 0.7)",
+  "rgba(255, 202, 88, 0.7)"
+]
 
 const getAsPopulationPercentage = (number, population) => {
   return (number * 100) / population
@@ -33,19 +38,22 @@ const Graph = () => {
       selectedCountries.forEach((selectedCountry, i) => {
         console.log("selectedCountry", selectedCountry)
         const allCases = liveData[selectedCountry].map(o => {
+          const activeCases = Math.max(o.confirmed - o.recovered, 0)
           if (isPopulationPercentage) {
             if (!countryPopulation[i]) {
               return 0
             }
-            return getAsPopulationPercentage(o.confirmed, countryPopulation[i])
+            return getAsPopulationPercentage(activeCases, countryPopulation[i])
           } else {
-            return o.confirmed
+            return activeCases
           }
         })
         const dates = liveData[selectedCountry].map(o => o.date)
         const firstConfirmed = allCases.findIndex(c => c > 0)
         updatedCases[selectedCountry] = allCases.slice(firstConfirmed)
-        updatesDates[selectedCountry] = dates.slice(firstConfirmed)
+        updatesDates[selectedCountry] = dates
+          .slice(firstConfirmed)
+          .map((d, i) => i)
         // If we want daily values
         if (!isCumulativeGraph) {
           const dailyValues = updatedCases[selectedCountry].map((c, i) => {
@@ -97,7 +105,7 @@ const Graph = () => {
       elevation="medium"
       round="medium"
     >
-      Cases since first infection
+      Active Cases Since First Infection
       <Line
         options={{
           legend: {
@@ -110,6 +118,13 @@ const Graph = () => {
               {
                 ticks: {
                   fontColor: "#AAA"
+                },
+                scaleLabel: {
+                  display: true,
+                  fontColor: "#AAA",
+                  labelString: isPopulationPercentage
+                    ? "Percentage infected"
+                    : "Number infected"
                 }
               }
             ],
@@ -117,6 +132,11 @@ const Graph = () => {
               {
                 ticks: {
                   fontColor: "#AAA"
+                },
+                scaleLabel: {
+                  display: true,
+                  fontColor: "#AAA",
+                  labelString: "Days since first infection"
                 }
               }
             ]
@@ -142,11 +162,11 @@ const Graph = () => {
           />
         )
       })}
-      Graph Type:
+      Graph Values:
       <RadioButtonGroup
         name={"isCumulativeGraphSelector"}
-        options={["daily cases", "cumulative"]}
-        value={isCumulativeGraph ? "cumulative" : "daily cases"}
+        options={["daily increase", "cumulative"]}
+        value={isCumulativeGraph ? "cumulative" : "daily increase"}
         onChange={event => {
           setIsCumulativeGraph(event.target.value === "cumulative")
         }}
