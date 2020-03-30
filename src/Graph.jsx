@@ -115,98 +115,104 @@ const Graph = () => {
   }, [days])
 
   return (
-    <Box
-      direction="column"
-      border={{ color: "brand", size: "medium" }}
-      pad="medium"
-      elevation="medium"
-      round="medium"
-    >
+    <Box direction="column" pad="medium" width="large">
       Active Cases Since First Infection
-      <Line
-        options={{
-          legend: {
-            labels: {
-              fontColor: "#AAA"
+      <Box direction="column" pad="medium">
+        <Line
+          options={{
+            legend: {
+              labels: {
+                fontColor: "#AAA"
+              }
+            },
+            scales: {
+              yAxes: [
+                {
+                  ticks: {
+                    fontColor: "#AAA"
+                  },
+                  scaleLabel: {
+                    display: true,
+                    fontColor: "#AAA",
+                    labelString:
+                      (isPopulationPercentage
+                        ? "Percentage infected"
+                        : "Number infected") + (isLogMode ? " (ln)" : "")
+                  }
+                }
+              ],
+              xAxes: [
+                {
+                  ticks: {
+                    fontColor: "#AAA"
+                  },
+                  scaleLabel: {
+                    display: true,
+                    fontColor: "#AAA",
+                    labelString: "Days since first infection"
+                  }
+                }
+              ]
             }
-          },
-          scales: {
-            yAxes: [
-              {
-                ticks: {
-                  fontColor: "#AAA"
-                },
-                scaleLabel: {
-                  display: true,
-                  fontColor: "#AAA",
-                  labelString:
-                    (isPopulationPercentage
-                      ? "Percentage infected"
-                      : "Number infected") + (isLogMode ? " (ln)" : "")
-                }
-              }
-            ],
-            xAxes: [
-              {
-                ticks: {
-                  fontColor: "#AAA"
-                },
-                scaleLabel: {
-                  display: true,
-                  fontColor: "#AAA",
-                  labelString: "Days since first infection"
-                }
-              }
-            ]
-          }
-        }}
-        data={{
-          labels: longestNumDays,
-          datasets: graphData
-        }}
-      />
-      Countries:
-      {selectedCountries.map((selected, i) => {
-        return (
-          <Select
-            key={`country${i}`}
-            options={countries}
-            value={selected}
-            onChange={({ option }) => {
-              const newSelectedCountries = [...selectedCountries]
-              newSelectedCountries[i] = option
-              setSelectedCountries(newSelectedCountries)
-            }}
-          />
-        )
-      })}
-      Graph Values:
-      <RadioButtonGroup
-        name={"isCumulativeGraphSelector"}
-        options={["daily increase", "cumulative"]}
-        value={isCumulativeGraph ? "cumulative" : "daily increase"}
-        onChange={event => {
-          setIsCumulativeGraph(event.target.value === "cumulative")
-        }}
-      />
-      Graph Scale:
-      <RadioButtonGroup
-        name={"isPopulationPercentageSelector"}
-        options={["raw numbers", "population percentage"]}
-        value={isPopulationPercentage ? "population percentage" : "raw numbers"}
-        onChange={event =>
-          setPopulationPercentage(
-            event.target.value === "population percentage"
+          }}
+          data={{
+            labels: longestNumDays,
+            datasets: graphData
+          }}
+        />
+      </Box>
+      Countries to Compare:
+      <Box direction="column" pad="medium" align="center">
+        {selectedCountries.map((selected, i) => {
+          return (
+            <Select
+              key={`country${i}`}
+              options={countries}
+              value={selected}
+              onChange={({ option }) => {
+                const newSelectedCountries = [...selectedCountries]
+                newSelectedCountries[i] = option
+                setSelectedCountries(newSelectedCountries)
+              }}
+            />
           )
-        }
-      />
+        })}
+      </Box>
+      Graph Values:
+      <Box direction="column" pad="medium">
+        <RadioButtonGroup
+          name={"isCumulativeGraphSelector"}
+          options={["daily increase", "cumulative"]}
+          value={isCumulativeGraph ? "cumulative" : "daily increase"}
+          onChange={event => {
+            setIsCumulativeGraph(event.target.value === "cumulative")
+          }}
+        />
+      </Box>
+      Graph Scale:
+      <Box direction="column" pad="medium">
+        <RadioButtonGroup
+          name={"isPopulationPercentageSelector"}
+          options={["raw numbers", "population percentage"]}
+          value={
+            isPopulationPercentage ? "population percentage" : "raw numbers"
+          }
+          onChange={event =>
+            setPopulationPercentage(
+              event.target.value === "population percentage"
+            )
+          }
+        />
+      </Box>
       Graph Mode:
-      <RadioButtonGroup
-        name={"isLogModeSelector"}
-        options={["normal", "log"]}
-        value={isLogMode ? "log" : "normal"}
-        onChange={event => setIsLogMode(event.target.value === "log")}
-      />
+      <Box direction="column" pad="medium">
+        <RadioButtonGroup
+          name={"isLogModeSelector"}
+          options={["normal", "log"]}
+          value={isLogMode ? "log" : "normal"}
+          onChange={event => setIsLogMode(event.target.value === "log")}
+        />
+      </Box>
     </Box>
   )
 }
