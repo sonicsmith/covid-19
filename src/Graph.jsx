@@ -7,8 +7,7 @@ import {
   Stack,
   RangeSelector,
   Text,
-  Button,
-  Grid
+  CheckBox
 } from "grommet"
 import Select from "react-select"
 import useLiveData from "./useLiveData"
@@ -47,24 +46,21 @@ const getCumulative = updatedCases => {
 }
 
 const getZoomedData = (dataset, selectedTimeRange) => {
-  if (typeof dataset === "Array") {
-    const daysStart = Math.floor(dataset.length * selectedTimeRange[0])
-    const daysFinish = Math.ceil(dataset.length * selectedTimeRange[1])
-    return dataset.slice(daysStart, daysFinish)
-  }
-  return dataset
+  const daysStart = Math.floor((dataset.length * selectedTimeRange[0]) / 100)
+  const daysFinish = Math.ceil((dataset.length * selectedTimeRange[1]) / 100)
+  return dataset.slice(daysStart, daysFinish)
 }
 
 const Graph = () => {
   const liveData = useLiveData()
   const [cases, setCases] = useState({})
   const [deaths, setDeaths] = useState({})
-  const [days, setDays] = useState({})
+  const [days, setDays] = useState([])
   const [selectedCountries, setSelectedCountries] = useState(["Italy", "US"])
   const [isCumulativeGraph, setIsCumulativeGraph] = useState(true)
   const [isPopulationPercentage, setPopulationPercentage] = useState(false)
   const [isLogMode, setIsLogMode] = useState(false)
-  const [valueRange, setSelectedValueRange] = useState([0, 100])
+  const [applyRecovered, setApplyRecovered] = useState(false)
   const [selectedTimeRange, setSelectedTimeRange] = useState([0, 100])
   const countryPopulation = []
   countryPopulation[0] = useCountryPopulation(selectedCountries[0])
@@ -80,18 +76,14 @@ const Graph = () => {
       const updatedDeaths = {}
       const updatesDates = {}
       selectedCountries.forEach((selectedCountry, i) => {
+        const pop = isPopulationPercentage && countryPopulation[i]
         const allCases = liveData[selectedCountry].map(o => {
-          const activeCases = Math.max(o.confirmed - o.recovered, 0)
-          return getAsPopulationPercentage(
-            activeCases,
-            isPopulationPercentage && countryPopulation[i]
-          )
+          const alteration = applyRecovered ? o.recovered : 0
+          const activeCases = Math.max(o.confirmed - alteration, 0)
+          return getAsPopulationPercentage(activeCases, pop)
         })
         const allDeaths = liveData[selectedCountry].map(o => {
-          return getAsPopulationPercentage(
-            o.deaths,
-            isPopulationPercentage && countryPopulation[i]
-          )
+          return getAsPopulationPercentage(o.deaths, pop)
         })
         const dates = liveData[selectedCountry].map(o => o.date)
         const firstConfirmed = allCases.findIndex(c => c > 0)
@@ -112,74 +104,63 @@ const Graph = () => {
           const dailyDeaths = getCumulative(updatedDeaths[selectedCountry])
           updatedCases[selectedCountry] = dailyCases
           updatedDeaths[selectedCountry] = dailyDeaths
-          console.log("Deaths", dailyDeaths.length)
         }
       })
-      setCases(updatedCases)
-      setDeaths(updatedDeaths)
-      setDays(updatesDates)
+      const daysAxis = Object.values(updatesDates).sort(
+        (a, b) => b.length - a.length
+      )[0]
+      const daysStart = Math.floor(
+        (daysAxis.length * selectedTimeRange[0]) / 100
+      )
+      const daysFinish = Math.ceil(
+        (daysAxis.length * selectedTimeRange[1]) / 100
+      )
+      const selectedDays = daysAxis.slice(daysStart, daysFinish)
+      const selectedCases = {}
+      const selectedDeaths = {}
+      Object.keys(updatedCases).forEach(c => {
+        selectedCases[c] = []
+        selectedDeaths[c] = []
+        for (
+          let i = selectedDays[0];
+          i < selectedDays[selectedDays.length - 1];
+          i++
+        ) {
+          selectedCases[c].push(updatedCases[c][i])
+          selectedDeaths[c].push(updatedDeaths[c][i])
+        }
+      })
+      setDays(selectedDays)
+      setCases(selectedCases)
+      setDeaths(selectedDeaths)
     }
   }, [
     countries,
     selectedCountries,
     isCumulativeGraph,
     isPopulationPercentage,
-    isLogMode
+    isLogMode,
+    applyRecovered,
+    selectedTimeRange
   ])
 
   const graphData = useMemo(() => {
-    if (Object.keys(cases).length) {
-      const casesDatasets = Object.values(cases)
-      const deathsDatasets = Object.values(deaths)
-      const allDatasets = [...casesDatasets, ...deathsDatasets]
-      const zoomedDataSet = allDatasets.map(dataset => {
-        const daysStart = Math.floor(
-          (dataset.length * selectedTimeRange[0]) / 100
-        )
-        const daysFinish = Math.ceil(
-          (dataset.length * selectedTimeRange[1]) / 100
-        )
-        return dataset.slice(daysStart, Math.max(dataset.length, daysFinish))
-      })
-      const labels = [
-        `${Object.keys(cases)[0]} Infected`,
-        `${Object.keys(cases)[1]} Infected`,
-        `${Object.keys(cases)[0]} Deaths`,
-        `${Object.keys(cases)[1]} Deaths`
-      ]
-      return zoomedDataSet.map((dataset, i) => ({
-        label: `${labels[i]}`,
-        borderColor: colors[i],
-        pointStyle: "line",
-        data: dataset
-      }))
-    } else {
-      return []
-    }
-  }, [cases, days, selectedTimeRange])
-
-  const longestNumDays = useMemo(() => {
-    if (Object.keys(days).length) {
-      let longestAxis = 0
-      let longestCountry
-      Object.keys(days).forEach((key, i) => {
-        if (days[key].length > longestAxis) {
-          longestAxis = days[key].length
-          longestCountry = key
-        }
-      })
-      const dataset = days[longestCountry]
-      const daysStart = Math.floor(
-        (dataset.length * selectedTimeRange[0]) / 100
-      )
-      const daysFinish = Math.ceil(
-        (dataset.length * selectedTimeRange[1]) / 100
-      )
-      return dataset.slice(daysStart, daysFinish)
-    } else {
-      return []
-    }
-  }, [days, selectedTimeRange])
+    const casesDatasets = Object.values(cases)
+    const deathsDatasets = Object.values(deaths)
+    const allDatasets = [...casesDatasets, ...deathsDatasets]
+    const labels = [
+      `${Object.keys(cases)[0]} Infected`,
+      `${Object.keys(cases)[1]} Infected`,
+      `${Object.keys(cases)[0]} Deaths`,
+      `${Object.keys(cases)[1]} Deaths`
+    ]
+    return allDatasets.map((dataset, i) => ({
+      label: `${labels[i]}`,
+      borderColor: colors[i],
+      pointStyle: "line",
+      data: dataset
+    }))
+  }, [cases, deaths, days])
 
   return (
     <Box direction="column" pad="medium" width="large">
@@ -230,15 +211,15 @@ const Graph = () => {
             }
           }}
           data={{
-            labels: getZoomedData(longestNumDays, selectedTimeRange),
-            datasets: getZoomedData(graphData, selectedTimeRange)
+            labels: days,
+            datasets: graphData
           }}
         />
       </Box>
       Zoom Selection:
       <Stack>
         <Box direction="row" justify="between">
-          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(value => (
+          {[0, 2.5, 5, 7.5, 10].map(value => (
             <Box key={value} pad="small" border={false}>
               <Text style={{ fontFamily: "monospace" }}>{value * 10}%</Text>
             </Box>
@@ -251,7 +232,6 @@ const Graph = () => {
           round="small"
           values={selectedTimeRange}
           onChange={values => {
-            // setSelectedValueRange(values)
             setSelectedTimeRange(values)
           }}
         />
@@ -288,6 +268,12 @@ const Graph = () => {
           }}
         />
       </Box>
+      Data type:
+      <CheckBox
+        checked={applyRecovered}
+        label="apply recovered"
+        onChange={event => setApplyRecovered(event.target.checked)}
+      />
       Graph Scale:
       <Box direction="column" pad="medium">
         <RadioButtonGroup
