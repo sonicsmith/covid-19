@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react"
 import "./App.css"
 import { Line } from "react-chartjs-2"
-import { Box, RadioButtonGroup } from "grommet"
+import {
+  Box,
+  RadioButtonGroup,
+  Stack,
+  RangeSelector,
+  Text,
+  Button,
+  Grid
+} from "grommet"
 import Select from "react-select"
 import useLiveData from "./useLiveData"
 import useCountryPopulation from "./useCountryPopulation"
@@ -38,6 +46,15 @@ const getCumulative = updatedCases => {
   })
 }
 
+const getZoomedData = (dataset, selectedTimeRange) => {
+  if (typeof dataset === "Array") {
+    const daysStart = Math.floor(dataset.length * selectedTimeRange[0])
+    const daysFinish = Math.ceil(dataset.length * selectedTimeRange[1])
+    return dataset.slice(daysStart, daysFinish)
+  }
+  return dataset
+}
+
 const Graph = () => {
   const liveData = useLiveData()
   const [cases, setCases] = useState({})
@@ -47,6 +64,8 @@ const Graph = () => {
   const [isCumulativeGraph, setIsCumulativeGraph] = useState(true)
   const [isPopulationPercentage, setPopulationPercentage] = useState(false)
   const [isLogMode, setIsLogMode] = useState(false)
+  const [valueRange, setSelectedValueRange] = useState([0, 100])
+  const [selectedTimeRange, setSelectedTimeRange] = useState([0, 100])
   const countryPopulation = []
   countryPopulation[0] = useCountryPopulation(selectedCountries[0])
   countryPopulation[1] = useCountryPopulation(selectedCountries[1])
@@ -60,7 +79,6 @@ const Graph = () => {
       const updatedCases = {}
       const updatedDeaths = {}
       const updatesDates = {}
-
       selectedCountries.forEach((selectedCountry, i) => {
         const allCases = liveData[selectedCountry].map(o => {
           const activeCases = Math.max(o.confirmed - o.recovered, 0)
@@ -114,13 +132,22 @@ const Graph = () => {
       const casesDatasets = Object.values(cases)
       const deathsDatasets = Object.values(deaths)
       const allDatasets = [...casesDatasets, ...deathsDatasets]
+      const zoomedDataSet = allDatasets.map(dataset => {
+        const daysStart = Math.floor(
+          (dataset.length * selectedTimeRange[0]) / 100
+        )
+        const daysFinish = Math.ceil(
+          (dataset.length * selectedTimeRange[1]) / 100
+        )
+        return dataset.slice(daysStart, Math.max(dataset.length, daysFinish))
+      })
       const labels = [
         `${Object.keys(cases)[0]} Infected`,
         `${Object.keys(cases)[1]} Infected`,
         `${Object.keys(cases)[0]} Deaths`,
         `${Object.keys(cases)[1]} Deaths`
       ]
-      return allDatasets.map((dataset, i) => ({
+      return zoomedDataSet.map((dataset, i) => ({
         label: `${labels[i]}`,
         borderColor: colors[i],
         pointStyle: "line",
@@ -129,19 +156,30 @@ const Graph = () => {
     } else {
       return []
     }
-  }, [cases, days])
+  }, [cases, days, selectedTimeRange])
 
   const longestNumDays = useMemo(() => {
-    let longestAxis = 0
-    let longestCountry
-    Object.keys(days).forEach((key, i) => {
-      if (days[key].length > longestAxis) {
-        longestAxis = days[key].length
-        longestCountry = key
-      }
-    })
-    return days[longestCountry]
-  }, [days])
+    if (Object.keys(days).length) {
+      let longestAxis = 0
+      let longestCountry
+      Object.keys(days).forEach((key, i) => {
+        if (days[key].length > longestAxis) {
+          longestAxis = days[key].length
+          longestCountry = key
+        }
+      })
+      const dataset = days[longestCountry]
+      const daysStart = Math.floor(
+        (dataset.length * selectedTimeRange[0]) / 100
+      )
+      const daysFinish = Math.ceil(
+        (dataset.length * selectedTimeRange[1]) / 100
+      )
+      return dataset.slice(daysStart, daysFinish)
+    } else {
+      return []
+    }
+  }, [days, selectedTimeRange])
 
   return (
     <Box direction="column" pad="medium" width="large">
@@ -149,6 +187,13 @@ const Graph = () => {
       <Box direction="column" pad="medium">
         <Line
           options={{
+            animation: {
+              duration: 0 // general animation time
+            },
+            hover: {
+              animationDuration: 0 // duration of animations when hovering an item
+            },
+            responsiveAnimationDuration: 0, // animation duration after a resize
             legend: {
               labels: {
                 fontColor: "#AAA"
@@ -185,11 +230,32 @@ const Graph = () => {
             }
           }}
           data={{
-            labels: longestNumDays,
-            datasets: graphData
+            labels: getZoomedData(longestNumDays, selectedTimeRange),
+            datasets: getZoomedData(graphData, selectedTimeRange)
           }}
         />
       </Box>
+      Zoom Selection:
+      <Stack>
+        <Box direction="row" justify="between">
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(value => (
+            <Box key={value} pad="small" border={false}>
+              <Text style={{ fontFamily: "monospace" }}>{value * 10}%</Text>
+            </Box>
+          ))}
+        </Box>
+        <RangeSelector
+          direction="horizontal"
+          invert={false}
+          size="full"
+          round="small"
+          values={selectedTimeRange}
+          onChange={values => {
+            // setSelectedValueRange(values)
+            setSelectedTimeRange(values)
+          }}
+        />
+      </Stack>
       Countries to Compare:
       {/* <Box direction="column" pad="medium" align="center"> */}
       {selectedCountries.map((selected, i) => {
